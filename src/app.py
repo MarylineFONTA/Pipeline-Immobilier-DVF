@@ -160,24 +160,43 @@ def normalize_city(addr: str) -> str | None:
         return f"{city} ({cp})"
     return city
 
-def normalize_city_from_address(addr: str) -> str | None:
-    """Extrait 'Ville (CP)' depuis l'adresse."""
-    if not addr or not isinstance(addr, str):
-        return None
-    m_cp = re.search(r"\b(\d{5})\b", addr)
-    cp = m_cp.group(1) if m_cp else None
-    # capture la ville avant la parenthèse ou avant le CP
-    m_city = re.search(r"([A-Za-zÀ-ÖØ-öø-ÿ'’\- ]+)\s*(?:\(|\d{5})", addr)
-    city = m_city.group(1).strip() if m_city else None
-    return normalize_city(city, cp)
-
+def _scale_into_range(s: pd.Series, lo: float, hi: float) -> pd.Series:
+    """Tente de ramener s dans [lo, hi] via un facteur 10**k (k ∈ [-6..6]).
+    Ne modifie que si >70% des valeurs non nulles sortent de l’intervalle."""
+    x = pd.to_numeric(s, errors="coerce")
+    if x.notna().sum() == 0:
+        return s
+    med = x.median(skipna=True)
+    # Si déjà plausible, ne rien faire
+    if lo <= med <= hi:
+        return s
+    # Cherche un k qui ramène la médiane dans la plage
+    for k in range(-6, 7):
+        m2 = med * (10 ** k)
+        if lo <= m2 <= hi:
+            # vérifie qu’une large majorité rentrerait dans la plage
+            x2 = x * (10 ** k)
+            ok_ratio = (x2.between(lo, hi)).mean()
+            if ok_ratio >= 0.7:
+                return x2
+            break
+    return s
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Harmonise les colonnes, corrige l'échelle lat/lon, détecte lat/lon inversés,
-    et calcule price_per_m2 si possible."""
+    """
+    - Harmonise les noms de colonnes
+    - Convertit en numériques
+    - Corrige lat/lon par ligne via tests (×/÷10^n, swap) jusqu'à une plage France
+    - Calcule price_per_m2
+    - Déduit city depuis address (via normalize_city)
+    """
+
+    # ---------- mapping colonnes ----------
     cols_low = {c.lower(): c for c in df.columns}
     rename: dict[str, str] = {}
-    def has(*names): return next((cols_low[n] for n in names if n in cols_low), None)
+
+    def has(*names):
+        return next((cols_low[n] for n in names if n in cols_low), None)
 
     c_price = has("prix_eur", "price_eur", "prix")
     c_surf  = has("surface_m2", "surface", "surface_m2 (m2)")
@@ -199,42 +218,65 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.rename(columns=rename)
 
-    # numériques
+    # ---------- numériques ----------
     for c in ("price_eur", "surface_m2", "lat", "lon"):
         if c in df:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    # --- Corriger l'échelle lat/lon (micro-degrés -> degrés) ---
-    if {"lat","lon"}.issubset(df.columns):
-        lat_med = df["lat"].abs().median(skipna=True)
-        lon_med = df["lon"].abs().median(skipna=True)
-        if pd.notna(lat_med) and pd.notna(lon_med) and (lat_med > 90 or lon_med > 180):
-            maxv = float(max(lat_med, lon_med))
-            factor = 1e6 if maxv >= 1e6 else (1e5 if maxv >= 1e5 else 1.0)
-            if factor != 1.0:
-                df["lat"] = df["lat"] / factor
-                df["lon"] = df["lon"] / factor
+    # ---------- lat/lon : correction par ligne ----------
+    if {"lat", "lon"}.issubset(df.columns):
+        LAT_RANGE = (41.0, 51.5)
+        LON_RANGE = (-5.5, 10.5)
+        SCALES = [1, 10, 100, 1000, 1e4, 1e5, 1e6, 0.1, 0.01, 0.001, 1e-4, 1e-5, 1e-6]
 
-        # --- Détecter lat/lon inversés (typique : lat≈2.x, lon≈48.x en France) ---
-        lat_med = df["lat"].median(skipna=True)
-        lon_med = df["lon"].median(skipna=True)
-        if pd.notna(lat_med) and pd.notna(lon_med):
-            if (-5 <= lat_med <= 10) and (41 <= lon_med <= 51):
-                df[["lat", "lon"]] = df[["lon", "lat"]]
+        def in_range(v, lo, hi):
+            return pd.notna(v) and lo <= v <= hi
 
-    # €/m² si possible
+        def plausible(lat, lon):
+            return in_range(lat, *LAT_RANGE) and in_range(lon, *LON_RANGE)
+
+        def fix_row(row):
+            lat, lon = row["lat"], row["lon"]
+            if pd.isna(lat) or pd.isna(lon):
+                return lat, lon
+            # si déjà plausible, ne touche pas
+            if plausible(lat, lon):
+                return lat, lon
+
+            candidates = []
+            for swap in (False, True):
+                a = lon if swap else lat
+                b = lat if swap else lon
+                for slat in SCALES:
+                    for slon in SCALES:
+                        la = a * slat
+                        lo = b * slon
+                        if plausible(la, lo):
+                            # coût faible = petite correction + pas de swap
+                            cost = (abs(np.log10(slat)) if slat != 0 else 99) \
+                                   + (abs(np.log10(slon)) if slon != 0 else 99) \
+                                   + (1 if swap else 0)
+                            candidates.append((cost, la, lo))
+            if candidates:
+                candidates.sort(key=lambda x: x[0])
+                _, la, lo = candidates[0]
+                return la, lo
+            # rien trouvé -> garde tel quel
+            return lat, lon
+
+        df[["lat", "lon"]] = df.apply(fix_row, axis=1, result_type="expand")
+
+    # ---------- €/m² ----------
     if {"price_eur", "surface_m2"}.issubset(df.columns):
         with np.errstate(divide="ignore", invalid="ignore"):
             df["price_per_m2"] = (df["price_eur"] / df["surface_m2"]).replace([np.inf, -np.inf], np.nan)
         df["price_per_m2"] = df["price_per_m2"].round(0)
 
-    # City -> "Ville (CP)" depuis l'adresse
+    # ---------- City depuis address ----------
     if "address" in df:
         df["city"] = df["address"].fillna("").apply(normalize_city)
 
     return df
-
-
 
 
 def _safe_range(min_v, max_v, default_span=10, floor=0):
@@ -319,16 +361,32 @@ price_min, price_max = st.sidebar.select_slider(
     format_func=lambda x: f"{fmt_fr(x)} €",
     key="price_select_quantiles",
 )
-surface_m2_sel = st.sidebar.slider(
+# Slider des surfaces
+s_surf = pd.to_numeric(df.get("surface_m2"), errors="coerce").dropna()
+if len(s_surf) == 0:
+    surface_options = [0.0, 1.0]
+else:
+    qs = np.linspace(0, 1, 51)  # ~50 crans
+    # on garde des valeurs entières pour un slider plus propre
+    surface_options = sorted(set(int(np.quantile(s_surf, q)) for q in qs))
+    # garantir min/max réels
+    surface_options[0] = int(s_surf.min())
+    surface_options[-1] = int(s_surf.max())
+    # edge case: tous identiques
+    if len(surface_options) < 2:
+        surface_options = [surface_options[0], surface_options[0] + 1]
+
+surface_min, surface_max = st.sidebar.select_slider(
     "Surface (m²)",
-    min_value=surface_m2_min,
-    max_value=surface_m2_max,
-    value=(surface_m2_min, surface_m2_max),
-    step=1,
+    options=surface_options,
+    value=(surface_options[0], surface_options[-1]),
+    format_func=lambda x: f"{x} m²",
+    key="surface_select_quantiles",
 )
 
+
 cities = sorted([c for c in df.get("city", pd.Series([])).dropna().unique().tolist()])
-city_sel = st.sidebar.multiselect("Ville", cities, default=[])
+city_sel = st.sidebar.multiselect("Ville (Arrondissement de Paris)", cities, default=[])
 q = st.sidebar.text_input("Recherche texte (dans l’adresse)", value="")
 
 # ================== MAIN ==================
@@ -337,9 +395,9 @@ last_dt  = get_csv_last_modified(csv_url)
 last_txt = last_dt.strftime("%d/%m/%Y %H:%M") if last_dt else "indisponible"
 st.markdown(
     f"""
-    <h1 style='text-align:left; font-size:38px; color:#2C3E50;'>🏠 Tableau de bord immobilier - Paris</h1>
+    <h1 style='text-align:left; font-size:38px; color:#2C3E50;'>🏠 Tableau de bord Ventes immobilières entre 2019 et 2024 - Paris</h1>
     <p style='text-align:left; font-size:16px; color:gray; margin-top:-10px;'>
-        (Source : DVF&nbsp;•&nbsp;🗓️ Données mises à jour : {last_txt})
+        (Source : DVF&nbsp;•&nbsp;https://app.dvf.etalab.gouv.fr/ •&nbsp;🗓️ Données mises à jour : {last_txt})
     </p>
     """,
     unsafe_allow_html=True,
@@ -353,14 +411,22 @@ if "price_eur" in df:
 if "price_per_m2" in df:
     right.metric("€/m² moyen (global)", f"{int(df['price_per_m2'].mean(skipna=True)):,} €".replace(",", " "))
 
-# Filtres
+# ================== FILTRES ==================
 mask = pd.Series(True, index=df.index)
+
+# Prix
 if "price_eur" in df:
     mask &= df["price_eur"].between(price_min, price_max, inclusive="both")
+
+# Surface (utilise les bornes du select_slider quantiles)
 if "surface_m2" in df:
-    mask &= df["surface_m2"].between(surface_m2_sel[0], surface_m2_sel[1], inclusive="both")
+    mask &= df["surface_m2"].between(surface_min, surface_max, inclusive="both")
+
+# Ville
 if city_sel and "city" in df:
     mask &= df["city"].isin(city_sel)
+
+# Recherche texte
 if q:
     if "address" in df:
         mask &= df["address"].str.contains(q, case=False, na=False)
@@ -368,6 +434,7 @@ if q:
         mask &= df["city"].str.contains(q, case=False, na=False)
 
 dff = df.loc[mask].copy()
+
 
 # KPIs filtrés
 st.subheader("🔎 Résultats filtrés")
