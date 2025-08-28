@@ -1,0 +1,67 @@
+name: Scrape & Clean (CI)
+
+on:
+  workflow_dispatch:        # lancement manuel
+  push:
+    branches: [ "main" ]    # optionnel: à chaque push sur main
+  # schedule:               # optionnel: exécution quotidienne (UTC)
+  #   - cron: "0 5 * * *"   # 05:00 UTC ~ 07:00/06:00 Europe/Paris selon saison
+
+permissions:
+  contents: write           # nécessaire pour commit/push avec GITHUB_TOKEN
+
+concurrency:
+  group: scrape-clean
+  cancel-in-progress: true
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # utile pour pouvoir pousser ensuite
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+
+      - name: Run scraper then cleaner (separate scripts)
+        if: ${{ hashFiles('src/app.py') != '' }}
+        run: |
+          # adapte ces chemins/commandes à ton repo
+          python src/spider.py
+          python src/cleaner.py
+
+      - name: Check CSV exists
+        run: |
+          test -f data/cleaned_data.csv || (echo "data/cleaned_data.csv manquant" && exit 1)
+
+      - name: Commit & push CSV
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Pas de changement à committer."
+          else
+            git commit -m "CI: update data/cleaned_data.csv [skip ci]"
+            git push
+          fi
+
+      - name: Upload CSV artifact (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: clean-csv
+          path: data/cleaned_data.csv
+          if-no-files-found: error
