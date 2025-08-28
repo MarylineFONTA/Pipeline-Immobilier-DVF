@@ -298,15 +298,8 @@ if options[-1] != price_eur_max:
 if len(options) < 2:
     options = [price_eur_min, price_eur_min + 1]
 
-'''price_eur_sel = st.sidebar.select_slider(
-    "Prix (€)",
-    options=options,
-    value=(options[0], options[-1]),
-    format_func=lambda x: f"{fmt_fr(x)} €",
-    key=f"price_{options[0]}_{options[-1]}",
-)'''
+
 # ==== Prix (€) : number inputs + slider synchronisés ====
-st.sidebar.markdown("#### Prix (€)")
 
 # Série des prix nettoyée
 s = pd.to_numeric(df.get("price_eur"), errors="coerce").dropna().astype(int)
