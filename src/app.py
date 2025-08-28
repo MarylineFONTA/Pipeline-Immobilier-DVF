@@ -333,7 +333,7 @@ q = st.sidebar.text_input("Recherche texte (dans l’adresse)", value="")
 
 # ================== MAIN ==================
 st.markdown("<style>.block-container{padding-top:1rem;}</style>", unsafe_allow_html=True)
-
+last_dt  = get_csv_last_modified(csv_url)
 last_txt = last_dt.strftime("%d/%m/%Y %H:%M") if last_dt else "indisponible"
 st.markdown(
     f"""
