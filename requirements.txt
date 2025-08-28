@@ -1,0 +1,4 @@
+scrapy>=2.13,<3.0
+pandas>=2.2
+geopy>=2.4
+streamlit
