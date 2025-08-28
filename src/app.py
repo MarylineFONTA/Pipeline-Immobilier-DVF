@@ -467,6 +467,14 @@ st.dataframe(
     use_container_width=True,
     column_config={
         "city": st.column_config.TextColumn("Ville", width="large"),
+        "address": st.column_config.TextColumn("Adresse", width="large"),
+        "postal_code": st.column_config.TextColumn("CP"),
+        "price_eur": st.column_config.NumberColumn("Prix (€)", format="%,.0f €"),
+        "surface_m2": st.column_config.NumberColumn("Surface (m²)", format="%,.0f m²"),
+        "price_per_m2": st.column_config.NumberColumn("€/m²", format="%,.0f €/m²"),
+        "lat": st.column_config.NumberColumn("Latitude", format="%.6f"),
+        "lon": st.column_config.NumberColumn("Longitude", format="%.6f"),
+        "property_type": st.column_config.TextColumn("Type de logement"),
     },
 )
 st.caption("Astuce : mets à jour l’URL du CSV dans la barre latérale pour pointer sur ta dernière donnée.")
