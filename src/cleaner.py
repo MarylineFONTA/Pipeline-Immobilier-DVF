@@ -11,6 +11,11 @@ import pandas as pd
 
 def read_json_records(path: Path) -> List[Dict]:
     text = path.read_text(encoding="utf-8").strip()
+     # Si le fichier est vide, renvoyer une liste vide pour éviter l'erreur
+    if not text:
+        print(f"ℹ Fichier JSON vide trouvé, renvoi d'une liste vide : {path}")
+        return []
+    
     try:
         data = json.loads(text)
         if isinstance(data, list):
