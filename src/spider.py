@@ -166,8 +166,7 @@ def _run_standalone():
     if out_path.suffix.lower() == ".csv":
         feeds = {str(out_path): {"format": "csv", "encoding": "utf-8"}}
     else:
-        feeds = {str(out_path): {"format": "jsonlines"}}
-        #feeds = {str(out_path): {"format": "json", "encoding": "utf-8", "indent": 2}}
+        feeds = {str(out_path): {"format": "json", "encoding": "utf-8", "indent": 2}}
 
     process = CrawlerProcess(settings={
         "FEEDS": feeds,

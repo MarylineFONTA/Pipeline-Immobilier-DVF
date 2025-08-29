@@ -15,7 +15,6 @@ def read_json_records(path: Path) -> List[Dict]:
     if not text:
         print(f"ℹ Fichier JSON vide trouvé, renvoi d'une liste vide : {path}")
         return []
-    
     try:
         data = json.loads(text)
         if isinstance(data, list):
