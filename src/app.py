@@ -6,7 +6,6 @@ import io
 import os
 import re
 from datetime import datetime
-from functools import lru_cache
 
 import altair as alt
 import numpy as np
@@ -158,28 +157,6 @@ def normalize_city(addr: str) -> str | None:
     if city and cp:
         return f"{city} ({cp})"
     return city
-
-def _scale_into_range(s: pd.Series, lo: float, hi: float) -> pd.Series:
-    """Tente de ramener s dans [lo, hi] via un facteur 10**k (k ∈ [-6..6]).
-    Ne modifie que si >70% des valeurs non nulles sortent de l’intervalle."""
-    x = pd.to_numeric(s, errors="coerce")
-    if x.notna().sum() == 0:
-        return s
-    med = x.median(skipna=True)
-    # Si déjà plausible, ne rien faire
-    if lo <= med <= hi:
-        return s
-    # Cherche un k qui ramène la médiane dans la plage
-    for k in range(-6, 7):
-        m2 = med * (10 ** k)
-        if lo <= m2 <= hi:
-            # vérifie qu’une large majorité rentrerait dans la plage
-            x2 = x * (10 ** k)
-            ok_ratio = (x2.between(lo, hi)).mean()
-            if ok_ratio >= 0.7:
-                return x2
-            break
-    return s
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -394,7 +371,7 @@ last_dt  = get_csv_last_modified(csv_url)
 last_txt = last_dt.strftime("%d/%m/%Y %H:%M") if last_dt else "indisponible"
 st.markdown(
     f"""
-    <h1 style='text-align:left; font-size:38px; color:#2C3E50;'>🏠 Tableau de bord Ventes immobilières en 2024 - Paris</h1>
+    <h1 style='text-align:left; font-size:38px; color:#2C3E50;'>🏠 Tableau de bord • Ventes immobilières en 2024 - Paris</h1>
     <p style='text-align:left; font-size:16px; color:gray; margin-top:-10px;'>
         (Source : DVF&nbsp;•&nbsp;https://app.dvf.etalab.gouv.fr/ •&nbsp;🗓️ Données mises à jour : {last_txt})
     </p>

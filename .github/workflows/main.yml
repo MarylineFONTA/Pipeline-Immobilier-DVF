@@ -37,7 +37,6 @@ jobs:
       - name: Run scraper then cleaner (separate scripts)
         if: ${{ hashFiles('src/app.py') != '' }}
         run: |
-          # adapte ces chemins/commandes à ton repo
           python src/spider.py
           python src/cleaner.py
 
