@@ -74,32 +74,16 @@ source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
----
-
-## 🚀 Utilisation
-
-### 1) Lancer le dashboard
+-
+## 🚀 Lancement du dashboard
 
 ```bash
 streamlit run src/app.py
 ```
 
-L’app charge par défaut `data/cleaned_data.csv` (ou une URL GitHub *raw* si configurée dans l’UI).
-Tu peux coller une URL *raw* GitHub dans la barre latérale pour tester un fichier à jour.
+Par défaut, l’app charge `data/cleaned_data.csv`.
+Tu peux coller une URL *raw* GitHub dans la barre latérale pour tester un fichier mis à jour.
 
-### 2) Exécuter le pipeline complet manuellement
-
-```bash
-# Acquisition
-python src/spider.py --city "Paris" --year-min 2019 --year-max 2024 -o data/raw_data.json
-
-# Nettoyage / normalisation
-python src/cleaner.py -i data/raw_data.json -o data/cleaned_data.csv
-```
-
-Relance ensuite l’app ou clique **↻ Recharger les données**.
-
----
 
 ## 🤖 Automatisation (CI/CD avec GitHub Actions)
 

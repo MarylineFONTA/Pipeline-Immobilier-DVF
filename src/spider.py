@@ -30,11 +30,9 @@ def to_float_fr(x):
 class DVFSpider(scrapy.Spider):
     """
     Exemples :
-      # via Scrapy CLI (si tu as un projet Scrapy) :
+      
       # scrapy crawl dvf -a departement=75 -a years=2024 -O data/raw_data.json
 
-      # via exécution directe de ce fichier (voir le bloc __main__ ci-dessous) :
-      # python src/spider.py --departement 75 --years 2024 --out data/raw_data.json
     """
     name = "dvf"
     allowed_domains = ["files.data.gouv.fr", "data.gouv.fr", "gouv.fr"]
@@ -80,7 +78,7 @@ class DVFSpider(scrapy.Spider):
         # Stream texte
         text_io = io.TextIOWrapper(io.BytesIO(body), encoding="utf-8", errors="replace")
 
-        # Détection robuste du séparateur (',' ou ';')
+        # Détection du séparateur (',' ou ';')
         sample = text_io.read(8192)
         text_io.seek(0)
         try:
@@ -143,29 +141,22 @@ class DVFSpider(scrapy.Spider):
                 self.logger.debug(f"Ligne ignorée ({e})")
                 continue
 
-
-# --- Exécution directe (sans projet Scrapy ni 'scrapy crawl') ----------------
+''
+# --- Exécution directe ----------------
 def _run_standalone():
     parser = argparse.ArgumentParser(description="DVF spider (standalone)")
     parser.add_argument("--departement", default="75")
     parser.add_argument("--years", default="2024")
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--out", default="data/raw_data.json",
-                        help="Fichier de sortie (.json, .jsonl/.ndjson ou .csv)")
+    parser.add_argument("--out", default="data/raw_data.json")
     args = parser.parse_args()
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # FEEDS dynamiques selon l'extension de sortie + overwrite systématique
-    ext = out_path.suffix.lower()
-    if ext == ".csv":
-        feeds = {str(out_path): {"format": "csv", "encoding": "utf-8", "overwrite": True}}
-    elif ext in (".jsonl", ".ndjson"):
-        feeds = {str(out_path): {"format": "jsonlines", "encoding": "utf-8", "overwrite": True}}
-    else:
-        # par défaut JSON compact (pas d'indent) + overwrite
-        feeds = {str(out_path): {"format": "json", "encoding": "utf-8", "overwrite": True}}
+    # FEEDS dynamiques  + overwrite systématique
+    # par défaut JSON compact (pas d'indent) + overwrite
+    feeds = {str(out_path): {"format": "json", "encoding": "utf-8", "overwrite": True}}
 
     process = CrawlerProcess(settings={
         "FEEDS": feeds,
@@ -184,6 +175,6 @@ def _run_standalone():
     )
     process.start()
     print(f"✅ Écrit (overwrite): {out_path}")
-
+''
 if __name__ == "__main__":
     _run_standalone()
