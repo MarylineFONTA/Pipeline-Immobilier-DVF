@@ -3,9 +3,7 @@ name: Scrape & Clean (CI)
 on:
   workflow_dispatch:        # lancement manuel
   push:
-    branches: [ "main" ]    # optionnel: à chaque push sur main
-  # schedule:               # optionnel: exécution quotidienne (UTC)
-  #   - cron: "0 5 * * *"   # 05:00 UTC ~ 07:00/06:00 Europe/Paris selon saison
+    branches: [ "main" ]   
 
 permissions:
   contents: write           # nécessaire pour commit/push avec GITHUB_TOKEN
