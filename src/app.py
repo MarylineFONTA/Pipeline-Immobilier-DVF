@@ -19,8 +19,7 @@ import streamlit as st
 st.set_page_config(page_title="Immo Dashboard (DVF)", layout="wide")
 
 DEFAULT_CSV_URL = (
-    "https://raw.githubusercontent.com/MarylineFONTA/Pipeline-Immobilier-DVF/"
-    "refs/heads/main/data/cleaned_data.csv"
+    "https://raw.githubusercontent.com/MarylineFONTA/Pipeline-Immobilier-DVF/refs/heads/main/data/cleaned_data.csv"
 )
 
 CACHE_TTL = 600  # 10 min

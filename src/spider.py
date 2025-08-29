@@ -153,17 +153,21 @@ def _run_standalone():
     parser.add_argument("--years", default="2024")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--out", default="data/raw_data.json",
-                        help="Fichier de sortie (.json ou .csv)")
+                        help="Fichier de sortie (.json, .jsonl/.ndjson ou .csv)")
     args = parser.parse_args()
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # FEEDS dynamiques selon l'extension de sortie
-    if out_path.suffix.lower() == ".csv":
-        feeds = {str(out_path): {"format": "csv", "encoding": "utf-8"}}
+    # FEEDS dynamiques selon l'extension de sortie + overwrite systématique
+    ext = out_path.suffix.lower()
+    if ext == ".csv":
+        feeds = {str(out_path): {"format": "csv", "encoding": "utf-8", "overwrite": True}}
+    elif ext in (".jsonl", ".ndjson"):
+        feeds = {str(out_path): {"format": "jsonlines", "encoding": "utf-8", "overwrite": True}}
     else:
-        feeds = {str(out_path): {"format": "json", "encoding": "utf-8", "indent": 2}}
+        # par défaut JSON compact (pas d'indent) + overwrite
+        feeds = {str(out_path): {"format": "json", "encoding": "utf-8", "overwrite": True}}
 
     process = CrawlerProcess(settings={
         "FEEDS": feeds,
@@ -173,9 +177,15 @@ def _run_standalone():
         "DOWNLOAD_DELAY": 0.2,
         "CONCURRENT_REQUESTS": 2,
     })
-    process.crawl(DVFSpider, departement=args.departement, years=args.years, limit=args.limit)
+
+    process.crawl(
+        DVFSpider,
+        departement=args.departement,
+        years=args.years,
+        limit=args.limit,
+    )
     process.start()
-    print(f"✅ Écrit : {out_path}")
+    print(f"✅ Écrit (overwrite): {out_path}")
 
 if __name__ == "__main__":
     _run_standalone()
