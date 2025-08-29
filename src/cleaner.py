@@ -113,7 +113,16 @@ def main() -> None:
     df = coerce_types(df)
     df = add_price_per_m2(df)
 
-    # Colonnes ordonnées (1 info par colonne)
+    # Nettoyage des colonnes texte
+    df = sanitize_strings(df, sep=";")
+
+    # 🔽 Ici on enlève les doublons stricts sur toutes les colonnes
+    before = len(df)
+    df = df.drop_duplicates()
+    after = len(df)
+    print(f"✔ Déduplication : {before} → {after} lignes")
+
+    # Colonnes ordonnées
     ordered_cols = [
         "source","ID", "title", "postal_code", "address","city",
         "rooms", "floor", "surface_m2",
@@ -124,16 +133,13 @@ def main() -> None:
     existing = [c for c in ordered_cols if c in df.columns]
     df = df[existing]
 
-    # Nettoyage des colonnes texte
-    df = sanitize_strings(df, sep=";")
-
     # Stat globale (optionnel)
     avg_ppm2 = df["price_per_m2"].mean(skipna=True)
     avg_msg = "indisponible"
     if pd.notna(avg_ppm2):
         avg_msg = f"{avg_ppm2:,.2f} €/m²".replace(",", " ").replace(".", ",")
 
-    # Écriture CSV compatible Excel FR : séparateur ; et BOM UTF-8
+    # Écriture CSV
     df.to_csv(
         csv_out,
         sep=";",
