@@ -155,7 +155,7 @@ def _run_standalone():
     parser.add_argument("--departement", default="75")
     parser.add_argument("--years", default="2024")
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--out", default="data/raw_data.json",
+    parser.add_argument("--out", default="Pipeline-Immobilier-DVF/data/raw_data.json",
                         help="Fichier de sortie (.json ou .csv)")
     args = parser.parse_args()
 
