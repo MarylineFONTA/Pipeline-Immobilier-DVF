@@ -110,8 +110,12 @@ python src/cleaner.py -i data/raw_data.json -o data/cleaned_data.csv
 
 Ensuite, relance l’app Streamlit ou clique **↻ Recharger les données**.
 
----
 
+## 🚀 Démarrage du dashboard automatisé
+
+Lien streamlit : https://pipeline-immobilier-dvf-ernest-maryline.streamlit.app/
+
+---
 ## ⚙️ Configuration & variables
 
 ### Secrets (facultatif mais recommandé)

@@ -130,8 +130,6 @@ class DVFSpider(scrapy.Spider):
                     "city"          : commune or None,
                     "lon"           : to_float_fr(row.get("longitude")),
                     "lat"           : to_float_fr(row.get("latitude")),
-                    "url"           : None,    # pas d'URL DVF
-
                 }
 
                 # On ne garde que les mutations bâties avec prix + surface

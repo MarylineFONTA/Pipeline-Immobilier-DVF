@@ -124,7 +124,7 @@ def main() -> None:
 
     # Colonnes ordonnées
     ordered_cols = [
-        "source","ID", "title", "postal_code", "address","city",
+        "source","ID", "date","title", "postal_code", "address","city",
         "rooms", "floor", "surface_m2",
         "price_eur", "price_per_m2",
         "property_type",

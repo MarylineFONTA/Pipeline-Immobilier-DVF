@@ -394,7 +394,7 @@ last_dt  = get_csv_last_modified(csv_url)
 last_txt = last_dt.strftime("%d/%m/%Y %H:%M") if last_dt else "indisponible"
 st.markdown(
     f"""
-    <h1 style='text-align:left; font-size:38px; color:#2C3E50;'>🏠 Tableau de bord Ventes immobilières entre 2019 et 2024 - Paris</h1>
+    <h1 style='text-align:left; font-size:38px; color:#2C3E50;'>🏠 Tableau de bord Ventes immobilières en 2024 - Paris</h1>
     <p style='text-align:left; font-size:16px; color:gray; margin-top:-10px;'>
         (Source : DVF&nbsp;•&nbsp;https://app.dvf.etalab.gouv.fr/ •&nbsp;🗓️ Données mises à jour : {last_txt})
     </p>
