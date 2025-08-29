@@ -131,10 +131,7 @@ class DVFSpider(scrapy.Spider):
                     "lon"           : to_float_fr(row.get("longitude")),
                     "lat"           : to_float_fr(row.get("latitude")),
                     "url"           : None,    # pas d'URL DVF
-                    "description"   : None,
-                    "dpe_letter"    : None,
-                    "ges_letter"    : None,
-                    "year_built"    : None,
+
                 }
 
                 # On ne garde que les mutations bâties avec prix + surface
@@ -155,7 +152,7 @@ def _run_standalone():
     parser.add_argument("--departement", default="75")
     parser.add_argument("--years", default="2024")
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--out", default="Pipeline-Immobilier-DVF/data/raw_data.json",
+    parser.add_argument("--out", default="data/raw_data.json",
                         help="Fichier de sortie (.json ou .csv)")
     args = parser.parse_args()
 
